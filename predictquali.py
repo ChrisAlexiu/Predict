@@ -1,25 +1,27 @@
+
 """
 PredictQuali: (predict qualitative)
 1. produce a collection of models (multiple model types, each with multiple combinations of parameter sets) for predicting a binary qualitative/categorical/discrete outcome,
 2. evaluate each of them with several metrics,
 3. and then dump all results to a CSV file.
 
-PredictQuali uses scikit-learn.
+PredictQuali uses pandas and scikit-learn.
 
 Usage:
-    - import PredictQuali
-    - object = PredictQuali(data = pandas.DataFrame, y_name = 'predict_me')
-    - object.show_info()
-    - object.results_toCSV('filepath')
+    - import predictquali
+    - object = PredictQuali()
+    - # object.show_info()
+    - object.results(X, y)
+    - object.to_csv(filepath) # via pandas
 
 Arguments:
-    - mandatory: data, y_name
+    - PredictQuali can be instantiated without arguments - defaults will be used
     - use none or one of 'grid_keep' or 'grid_drop' - do not use both
     - when using 'grid_keep' or 'grid_drop':
         - input model type name short form as a list
         - lower case is acceptable
 
-Output: use 'object.results_toCSV' to save results to a CSV file. Output of results to an object or to standard output (print) is not supported.
+Output: use 'object.results()' to do the modeling and return results as a pandas DataFrame. Follow up with '.to_csv()' to save results to a CSV file.
 """
 
 import itertools
@@ -41,12 +43,9 @@ class PredictQuali(object):
     
     class_title_error = "ERROR re: class PredictQuali\n • "
 
-    def __init__(self, data, y_name, grid=None, grid_keep=None, grid_drop=None, \
-            scor=None, CV_k=5, n_processes=1, verbose=True):
+    def __init__(self, grid=None, grid_keep=None, grid_drop=None, scor=None, CV_k=5, \
+            n_processes=1, verbose=True):
         self.setup_grid_scor(grid, grid_keep, grid_drop, scor)
-        self.data_y, self.data_x = self.setup_data(data, y_name)
-        self.y_name = y_name
-        del data
         self.kFoldCV = model_selection.KFold(n_splits=CV_k, shuffle=False)
         self.n_processes = n_processes
         self.verbose = verbose
@@ -86,10 +85,6 @@ class PredictQuali(object):
             x.append(len(x[i]))
         return grid
     
-    def setup_data(self, data, y_name):
-    # split input dataframe into seperate x and y parts
-        return ( data[y_name], data.drop([y_name], axis=1) )
-    
     def setup_head(self):
     # get list of headings for results set
         results_headings = "Model_Type Parameters Duration_(s)".split()
@@ -99,25 +94,23 @@ class PredictQuali(object):
     def show_info(self):
         temp_grid = self.setup_pars(copy.deepcopy(self.grid))
         print("="*80)
-        print("Brute Force Binary Classification Modeling")
+        print("Binary Classification Modeling")
         print("-"*80)
-        print("Outcome Variable:", self.y_name, "•", \
-            "classes:", self.data_y.nunique(), self.data_y.unique())
-        print(self.data_y.value_counts())
-        print(self.data_y.value_counts(normalize=True))
-        print("\nModel Types:", len(temp_grid))
+        print("Model Types:", len(temp_grid))
         print("Models:", sum([x[-1] for x in temp_grid]), "•",end=" ")
         print(", ".join( \
             [(n_sh+":"+str(qnty)) for n_sh,n_lo,etmr,pars,qnty in temp_grid]))
-        print("\nMetrics:", ", ".join(self.scor.keys()))
+        print("Metrics:", ", ".join(self.scor.keys()))
         print("="*80)
         return None
 
-    def results_toCSV(self, filename):
+    def results(self, X, y):
     # self.level1_control() returns a pandas dataframe -> save it to CSV format
+        self.data_x, self.data_y = X, y
         self.grid = self.setup_pars(self.grid)
-        self.level1_control().to_csv(filename)
-        return None
+        # self.level1_control().to_csv(saveto)
+        # return None
+        return self.level1_control()
 
     def level1_control(self):
     # flatten grid and iterate through all model x parameters sets
