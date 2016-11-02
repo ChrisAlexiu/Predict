@@ -108,8 +108,6 @@ class PredictQuali(object):
     # self.level1_control() returns a pandas dataframe -> save it to CSV format
         self.data_x, self.data_y = X, y
         self.grid = self.setup_pars(self.grid)
-        # self.level1_control().to_csv(saveto)
-        # return None
         return self.level1_control()
 
     def level1_control(self):
